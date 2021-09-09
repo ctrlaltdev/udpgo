@@ -9,23 +9,29 @@ import (
 )
 
 var (
+	dst  = flag.String("d", "::1", "Destination")
+	host = flag.String("h", "::", "Host")
+	port = flag.Int("p", 1337, "Port")
+
 	listen = flag.Bool("l", false, "Start server")
 	send   = flag.Bool("s", false, "Send")
-	wg     = &sync.WaitGroup{}
+
+	wg = &sync.WaitGroup{}
 )
 
-func Send(msg string) {
-	Conn, _ := net.DialUDP("udp", nil, &net.UDPAddr{IP: []byte{127, 0, 0, 1}, Port: 10001, Zone: ""})
+func Send(host *string, msg string) {
+	Conn, _ := net.DialUDP("udp", nil, &net.UDPAddr{IP: net.ParseIP(*host), Port: *port, Zone: ""})
 	defer Conn.Close()
 
 	Conn.Write([]byte(msg))
 }
 
-func Listen() {
+func Listen(host *string, port *int) {
 	defer wg.Done()
 
-	ServerConn, _ := net.ListenUDP("udp", &net.UDPAddr{IP: []byte{0, 0, 0, 0}, Port: 10001, Zone: ""})
+	ServerConn, _ := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(*host), Port: *port, Zone: ""})
 	defer ServerConn.Close()
+	fmt.Println("Listening on ", *host, " on port ", *port)
 
 	buf := make([]byte, 1024)
 	for {
@@ -42,11 +48,11 @@ func main() {
 
 	if *listen {
 		wg.Add(1)
-		go Listen()
+		go Listen(host, port)
 	}
 
 	if *send {
-		Send(strings.Join(flag.Args(), " "))
+		Send(dst, strings.Join(flag.Args(), " "))
 	}
 
 	wg.Wait()
